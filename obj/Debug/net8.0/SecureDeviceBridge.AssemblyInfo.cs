@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyDescriptionAttribute("Universal hardware bridge for TPM 2.0 cryptographic operations via Minimal APIs")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e11281ac53aa86e8376f21eea788ea619a31dd09")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8b17962660ed90100bfb7de7e6d541e766c35e36")]
 [assembly: System.Reflection.AssemblyProductAttribute("SecureDeviceBridge")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SecureDeviceBridge")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -14,62 +14,48 @@ public static class EndpointRouting
     /// </summary>
     public static WebApplication MapSecureDeviceBridgeEndpoints(this WebApplication app)
     {
-        // ── Health Check ──────────────────────────────────────────────────────
+        // -- Health Check --------------------------------------------------------
         app.MapGet("/health", HandleHealthCheck)
             .WithName("HealthCheck")
             .WithTags("Health")
             .Produces<HealthResponse>(StatusCodes.Status200OK)
-            .WithDescription("Returns service status, security mode, and TPM availability.");
+            .WithDescription("Returns service status, mode, and number of hardware components available.");
 
-        // ── Key Generation ────────────────────────────────────────────────────
-        app.MapPost("/api/device/key/generate", HandleKeyGeneration)
-            .WithName("GenerateKey")
-            .WithTags("Cryptography")
-            .Accepts<KeyGenerateRequest>("application/json")
-            .Produces<KeyGenerationResult>(StatusCodes.Status200OK)
+        // -- Device Identity -----------------------------------------------------
+        app.MapGet("/api/device/identity", HandleDeviceIdentity)
+            .WithName("DeviceIdentity")
+            .WithTags("Identity")
+            .Produces<DeviceIdentityResult>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status500InternalServerError)
-            .WithDescription("Generates an RSA-2048 signing keypair inside the TPM. Idempotent by default.");
-
-        // ── Challenge Signing ─────────────────────────────────────────────────
-        app.MapPost("/api/device/key/sign", HandleChallengeSign)
-            .WithName("SignChallenge")
-            .WithTags("Cryptography")
-            .Accepts<SignChallengeRequest>("application/json")
-            .Produces<SigningResult>(StatusCodes.Status200OK)
-            .Produces(StatusCodes.Status400BadRequest)
-            .Produces(StatusCodes.Status500InternalServerError)
-            .WithDescription("Signs a challenge nonce using the TPM-resident private key (RSASSA-PKCS1-v1_5 / SHA-256).");
+            .WithDescription("Returns the unique Device ID generated from hardware component fingerprints.");
 
         return app;
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
+    // =========================================================================
     // Endpoint Handlers
-    // ═══════════════════════════════════════════════════════════════════════════
+    // =========================================================================
 
     /// <summary>
-    /// GET /health — Returns service identity, status, security mode, and TPM availability.
+    /// GET /health - Returns service status and hardware component availability.
     /// </summary>
     private static IResult HandleHealthCheck(
-        ITpmService tpmService,
+        IHardwareFingerprintService fingerprintService,
         ILogger<Program> logger)
     {
         try
         {
-            var status = tpmService.GetStatus();
+            int componentCount = fingerprintService.GetAvailableComponentCount();
 
             var response = new HealthResponse
             {
-                ServiceName = "SecureDeviceBridge",
-                Status = status.TpmAvailable ? "Healthy" : "Degraded",
-                SecurityMode = "TPM_Asymmetric_PoP",
+                Status = componentCount > 0 ? "Healthy" : "Degraded",
                 UtcTimestamp = DateTime.UtcNow,
-                TpmAvailable = status.TpmAvailable,
-                KeyLoaded = status.KeyLoaded
+                ComponentsAvailable = componentCount
             };
 
-            logger.LogDebug("Health check responded: {Status}, TPM: {TpmAvailable}, Key: {KeyLoaded}",
-                response.Status, response.TpmAvailable, response.KeyLoaded);
+            logger.LogDebug("Health check responded: {Status}, Components: {Count}",
+                response.Status, response.ComponentsAvailable);
 
             return Results.Ok(response);
         }
@@ -84,119 +70,45 @@ public static class EndpointRouting
     }
 
     /// <summary>
-    /// POST /api/device/key/generate — Generates an asymmetric keypair in TPM hardware.
-    /// Idempotent: returns the existing key unless "force": true is specified.
+    /// GET /api/device/identity - Reads hardware components and returns the composite Device ID.
+    /// Results are cached after the first call (hardware doesn't change at runtime).
     /// </summary>
-    private static async Task<IResult> HandleKeyGeneration(
-        ITpmService tpmService,
+    private static async Task<IResult> HandleDeviceIdentity(
+        IHardwareFingerprintService fingerprintService,
         ILogger<Program> logger,
-        HttpContext httpContext,
-        CancellationToken cancellationToken,
-        KeyGenerateRequest? request = null)
-    {
-        try
-        {
-            bool force = request?.Force ?? false;
-
-            logger.LogInformation("Key generation requested. Force: {Force}, RemoteIP: {RemoteIP}",
-                force, httpContext.Connection.RemoteIpAddress);
-
-            var result = await tpmService.GenerateKeyAsync(force, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (result.Success)
-            {
-                logger.LogInformation("Key generation succeeded. KeyId: {KeyId}, WasExisting: {WasExisting}",
-                    result.KeyId, result.WasExisting);
-
-                return Results.Ok(result);
-            }
-
-            logger.LogWarning("Key generation failed: {Error}", result.ErrorMessage);
-            return Results.Problem(
-                detail: result.ErrorMessage,
-                statusCode: StatusCodes.Status500InternalServerError,
-                title: "Key Generation Failed");
-        }
-        catch (OperationCanceledException)
-        {
-            logger.LogInformation("Key generation request was cancelled");
-            return Results.StatusCode(StatusCodes.Status499ClientClosedRequest);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Unhandled error in key generation endpoint");
-            return Results.Problem(
-                detail: "An unexpected error occurred during key generation.",
-                statusCode: StatusCodes.Status500InternalServerError,
-                title: "Internal Server Error");
-        }
-    }
-
-    /// <summary>
-    /// POST /api/device/key/sign — Signs a challenge nonce with the TPM-resident private key.
-    /// Returns the RSASSA-PKCS1-v1_5 / SHA-256 signature as Base64.
-    /// </summary>
-    private static async Task<IResult> HandleChallengeSign(
-        SignChallengeRequest? request,
-        ITpmService tpmService,
-        ILogger<Program> logger,
-        HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         try
         {
-            // ── Input validation ──
-            if (request is null || string.IsNullOrWhiteSpace(request.ChallengeNonce))
-            {
-                logger.LogWarning("Sign request rejected: missing or empty challengeNonce");
-                return Results.BadRequest(new
-                {
-                    error = "ChallengeNonce is required and must not be empty.",
-                    field = "challengeNonce"
-                });
-            }
+            logger.LogInformation("Device identity requested");
 
-            // Guard against excessively large nonces (DoS prevention)
-            if (request.ChallengeNonce.Length > 4096)
-            {
-                logger.LogWarning("Sign request rejected: challengeNonce too large ({Length} chars)",
-                    request.ChallengeNonce.Length);
-                return Results.BadRequest(new
-                {
-                    error = "ChallengeNonce must not exceed 4096 characters.",
-                    field = "challengeNonce"
-                });
-            }
-
-            logger.LogInformation("Sign request received. Nonce length: {Length}, RemoteIP: {RemoteIP}",
-                request.ChallengeNonce.Length, httpContext.Connection.RemoteIpAddress);
-
-            var result = await tpmService.SignChallengeAsync(request.ChallengeNonce, cancellationToken)
+            var result = await fingerprintService.CollectFingerprintAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             if (result.Success)
             {
-                logger.LogInformation("Challenge signed successfully. Algorithm: {Algorithm}", result.Algorithm);
+                logger.LogInformation("Device identity returned. DeviceId: {DeviceId}, Components: {Count}",
+                    result.DeviceId, result.Components?.Count ?? 0);
+
                 return Results.Ok(result);
             }
 
-            logger.LogWarning("Signing failed: {Error}", result.ErrorMessage);
+            logger.LogWarning("Device identity collection failed: {Error}", result.ErrorMessage);
             return Results.Problem(
                 detail: result.ErrorMessage,
                 statusCode: StatusCodes.Status500InternalServerError,
-                title: "Signing Failed");
+                title: "Device Identity Failed");
         }
         catch (OperationCanceledException)
         {
-            logger.LogInformation("Sign request was cancelled");
+            logger.LogInformation("Device identity request was cancelled");
             return Results.StatusCode(StatusCodes.Status499ClientClosedRequest);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Unhandled error in sign endpoint");
+            logger.LogError(ex, "Unhandled error in device identity endpoint");
             return Results.Problem(
-                detail: "An unexpected error occurred during signing.",
+                detail: "An unexpected error occurred while collecting device identity.",
                 statusCode: StatusCodes.Status500InternalServerError,
                 title: "Internal Server Error");
         }

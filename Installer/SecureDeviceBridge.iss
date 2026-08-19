@@ -55,7 +55,7 @@ SetupMutex=SecureDeviceBridgeSetupMutex
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Messages]
-WelcomeLabel2=This will install [name/ver] on your computer.%n%n{#MyAppName} is a local background service that bridges web applications to your machine's TPM 2.0 hardware for secure cryptographic operations.%n%nThe service listens on http://127.0.0.1:5050 (localhost only).%n%nIt is recommended that you close all other applications before continuing.
+WelcomeLabel2=This will install [name/ver] on your computer.%n%n{#MyAppName} is a local background service that generates a unique, deterministic Device ID by reading physical hardware component serial numbers (CPU, Motherboard, BIOS, SMBIOS UUID, Machine GUID).%n%nThe service listens on http://127.0.0.1:5050 (localhost only).%n%nIt is recommended that you close all other applications before continuing.
 
 [Files]
 ; Application files from dotnet publish output
@@ -150,7 +150,7 @@ begin
     // 2. Set service description
     RunSC(Format('description %s "%s"',
                  [SERVICE_NAME,
-                  'Universal hardware bridge for TPM 2.0 cryptographic operations via local Minimal APIs.']));
+                  'Generates a unique, deterministic Device ID from hardware component serial numbers via local Minimal APIs.']));
 
     // 3. Configure recovery: restart after 5s / 15s / 60s, reset counter after 24h
     RunSC(Format('failure %s reset= 86400 actions= restart/5000/restart/15000/restart/60000',
@@ -187,46 +187,8 @@ begin
   end;
 end;
 
-// ── InitializeUninstall: Prompt user about TPM key removal ──────────────────
-function InitializeUninstall(): Boolean;
-var
-  Response: Integer;
-  ResultCode: Integer;
-  ExePath: String;
-begin
-  Result := True;
-
-  // Since device identity/auth relies entirely on the TPM public key,
-  // evicting the persistent handle is irreversible and will break registration.
-  Response := MsgBox('Do you want to permanently delete the TPM-bound private key (Device Identity) from this hardware?' + #13#10#13#10 +
-                     'Warning: This will permanently invalidate this device''s registration and is IRREVERSIBLE.',
-                     mbConfirmation, MB_YESNO or MB_DEFBUTTON2);
-
-  if Response = idYes then
-  begin
-    ExePath := ExpandConstant('{app}\{#MyServiceExe}');
-    if FileExists(ExePath) then
-    begin
-      Log('Evicting TPM persistent key via CLI...');
-      if Exec(ExePath, '--remove-tpm-key', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
-      begin
-        if ResultCode = 0 then
-          Log('TPM key successfully evicted.')
-        else
-          Log('TPM key eviction CLI returned error code: ' + IntToStr(ResultCode));
-      end
-      else
-        Log('Failed to run TPM key eviction CLI.');
-    end
-    else
-      Log('Service executable not found. Cannot evict key.');
-  end;
-end;
-
-// ── Init: Warn if no TPM detected (informational only) ──────────────────────
+// ── Init: Setup initialization ──────────────────────────────────────────────
 function InitializeSetup(): Boolean;
 begin
   Result := True;
-  // The installer always proceeds — the service handles missing TPM gracefully.
-  // This is just an informational check.
 end;

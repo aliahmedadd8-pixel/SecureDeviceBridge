@@ -41,9 +41,7 @@ param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
 
-    [string]$Runtime = 'win-x64',
-
-    [switch]$RemoveTpmKey
+    [string]$Runtime = 'win-x64'
 )
 
 # --- Constants ------------------------------------------------------------------
@@ -146,24 +144,6 @@ function Uninstall-SecureDeviceBridge {
     if (-not $existingService) {
         Write-Host "[!] Service '$ServiceName' is not installed." -ForegroundColor Yellow
         return
-    }
-
-    # Evict TPM key if requested or confirmed by user
-    $evict = $RemoveTpmKey
-    if (-not $evict -and [Environment]::UserInteractive) {
-        $response = Read-Host "Do you want to permanently delete the TPM-resident private key (Device Identity) from this hardware? (y/N)"
-        if ($response -match '^[yY](es)?$') {
-            $evict = $true
-        }
-    }
-
-    if ($evict) {
-        Write-Host "[*] Evicting TPM key..." -ForegroundColor Yellow
-        if (Test-Path $ExePath) {
-            & $ExePath --remove-tpm-key
-        } else {
-            Write-Warning "Could not find $ExePath to execute key eviction. TPM key remains intact."
-        }
     }
 
     # Stop the service if running

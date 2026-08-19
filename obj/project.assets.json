@@ -634,33 +634,6 @@
           "buildTransitive/net6.0/_._": {}
         }
       },
-      "Microsoft.TSS/2.1.1": {
-        "type": "package",
-        "compile": {
-          "lib/netcoreapp2.0/TSS.Net.dll": {
-            "related": ".deps.json;.pdb"
-          }
-        },
-        "runtime": {
-          "lib/netcoreapp2.0/TSS.Net.dll": {
-            "related": ".deps.json;.pdb"
-          }
-        },
-        "runtimeTargets": {
-          "runtimes/linux-arm/lib/netcoreapp2.0/TSS.Net.dll": {
-            "assetType": "runtime",
-            "rid": "linux-arm"
-          },
-          "runtimes/linux-musl-x64/lib/netcoreapp2.1/TSS.Net.dll": {
-            "assetType": "runtime",
-            "rid": "linux-musl-x64"
-          },
-          "runtimes/linux-x64/lib/netcoreapp2.0/TSS.Net.dll": {
-            "assetType": "runtime",
-            "rid": "linux-x64"
-          }
-        }
-      },
       "Serilog/4.0.0": {
         "type": "package",
         "compile": {
@@ -836,6 +809,22 @@
           }
         }
       },
+      "System.CodeDom/8.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/net8.0/System.CodeDom.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/System.CodeDom.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net6.0/_._": {}
+        }
+      },
       "System.Diagnostics.EventLog/8.0.1": {
         "type": "package",
         "compile": {
@@ -857,6 +846,31 @@
             "rid": "win"
           },
           "runtimes/win/lib/net8.0/System.Diagnostics.EventLog.dll": {
+            "assetType": "runtime",
+            "rid": "win"
+          }
+        }
+      },
+      "System.Management/8.0.0": {
+        "type": "package",
+        "dependencies": {
+          "System.CodeDom": "8.0.0"
+        },
+        "compile": {
+          "lib/net8.0/System.Management.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/System.Management.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net6.0/_._": {}
+        },
+        "runtimeTargets": {
+          "runtimes/win/lib/net8.0/System.Management.dll": {
             "assetType": "runtime",
             "rid": "win"
           }
@@ -1521,19 +1535,6 @@
           "buildTransitive/net6.0/_._": {}
         }
       },
-      "Microsoft.TSS/2.1.1": {
-        "type": "package",
-        "compile": {
-          "lib/netcoreapp2.0/TSS.Net.dll": {
-            "related": ".deps.json;.pdb"
-          }
-        },
-        "runtime": {
-          "runtimes/linux-x64/lib/netcoreapp2.0/TSS.Net.dll": {
-            "related": ".deps.json;.pdb"
-          }
-        }
-      },
       "Serilog/4.0.0": {
         "type": "package",
         "compile": {
@@ -1709,6 +1710,22 @@
           }
         }
       },
+      "System.CodeDom/8.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/net8.0/System.CodeDom.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/System.CodeDom.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net6.0/_._": {}
+        }
+      },
       "System.Diagnostics.EventLog/8.0.1": {
         "type": "package",
         "compile": {
@@ -1718,6 +1735,25 @@
         },
         "runtime": {
           "lib/net8.0/System.Diagnostics.EventLog.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net6.0/_._": {}
+        }
+      },
+      "System.Management/8.0.0": {
+        "type": "package",
+        "dependencies": {
+          "System.CodeDom": "8.0.0"
+        },
+        "compile": {
+          "lib/net8.0/System.Management.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/System.Management.dll": {
             "related": ".xml"
           }
         },
@@ -2378,19 +2414,6 @@
           "buildTransitive/net6.0/_._": {}
         }
       },
-      "Microsoft.TSS/2.1.1": {
-        "type": "package",
-        "compile": {
-          "lib/netcoreapp2.0/TSS.Net.dll": {
-            "related": ".deps.json;.pdb"
-          }
-        },
-        "runtime": {
-          "lib/netcoreapp2.0/TSS.Net.dll": {
-            "related": ".deps.json;.pdb"
-          }
-        }
-      },
       "Serilog/4.0.0": {
         "type": "package",
         "compile": {
@@ -2566,6 +2589,22 @@
           }
         }
       },
+      "System.CodeDom/8.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/net8.0/System.CodeDom.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/System.CodeDom.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net6.0/_._": {}
+        }
+      },
       "System.Diagnostics.EventLog/8.0.1": {
         "type": "package",
         "compile": {
@@ -2576,6 +2615,25 @@
         "runtime": {
           "runtimes/win/lib/net8.0/System.Diagnostics.EventLog.Messages.dll": {},
           "runtimes/win/lib/net8.0/System.Diagnostics.EventLog.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net6.0/_._": {}
+        }
+      },
+      "System.Management/8.0.0": {
+        "type": "package",
+        "dependencies": {
+          "System.CodeDom": "8.0.0"
+        },
+        "compile": {
+          "lib/net8.0/System.Management.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "runtimes/win/lib/net8.0/System.Management.dll": {
             "related": ".xml"
           }
         },
@@ -3582,36 +3640,6 @@
         "useSharedDesignerContext.txt"
       ]
     },
-    "Microsoft.TSS/2.1.1": {
-      "sha512": "87DBN+4ANSFO8TDRmFjjTBl6PL7tmrfofmxki4LUnE34gOdyQiBfJK/X1QSu0UfCGUtpoBVv/tD985s4FDpKiA==",
-      "type": "package",
-      "path": "microsoft.tss/2.1.1",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "lib/net46/TSS.Net.dll",
-        "lib/net46/TSS.Net.pdb",
-        "lib/netcoreapp2.0/TSS.Net.deps.json",
-        "lib/netcoreapp2.0/TSS.Net.dll",
-        "lib/netcoreapp2.0/TSS.Net.pdb",
-        "lib/netstandard2.0/TSS.Net.deps.json",
-        "lib/netstandard2.0/TSS.Net.dll",
-        "lib/netstandard2.0/TSS.Net.pdb",
-        "lib/uap10.0/TSS.Net.dll",
-        "lib/uap10.0/TSS.Net.pdb",
-        "microsoft.tss.2.1.1.nupkg.sha512",
-        "microsoft.tss.nuspec",
-        "runtimes/linux-arm/lib/netcoreapp2.0/TSS.Net.deps.json",
-        "runtimes/linux-arm/lib/netcoreapp2.0/TSS.Net.dll",
-        "runtimes/linux-arm/lib/netcoreapp2.0/TSS.Net.pdb",
-        "runtimes/linux-musl-x64/lib/netcoreapp2.1/TSS.Net.deps.json",
-        "runtimes/linux-musl-x64/lib/netcoreapp2.1/TSS.Net.dll",
-        "runtimes/linux-musl-x64/lib/netcoreapp2.1/TSS.Net.pdb",
-        "runtimes/linux-x64/lib/netcoreapp2.0/TSS.Net.deps.json",
-        "runtimes/linux-x64/lib/netcoreapp2.0/TSS.Net.dll",
-        "runtimes/linux-x64/lib/netcoreapp2.0/TSS.Net.pdb"
-      ]
-    },
     "Serilog/4.0.0": {
       "sha512": "2jDkUrSh5EofOp7Lx5Zgy0EB+7hXjjxE2ktTb1WVQmU00lDACR2TdROGKU0K1pDTBSJBN1PqgYpgOZF8mL7NJw==",
       "type": "package",
@@ -3853,6 +3881,35 @@
         "serilog.sinks.file.nuspec"
       ]
     },
+    "System.CodeDom/8.0.0": {
+      "sha512": "WTlRjL6KWIMr/pAaq3rYqh0TJlzpouaQ/W1eelssHgtlwHAH25jXTkUphTYx9HaIIf7XA6qs/0+YhtLEQRkJ+Q==",
+      "type": "package",
+      "path": "system.codedom/8.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "LICENSE.TXT",
+        "THIRD-PARTY-NOTICES.TXT",
+        "buildTransitive/net461/System.CodeDom.targets",
+        "buildTransitive/net462/_._",
+        "buildTransitive/net6.0/_._",
+        "buildTransitive/netcoreapp2.0/System.CodeDom.targets",
+        "lib/net462/System.CodeDom.dll",
+        "lib/net462/System.CodeDom.xml",
+        "lib/net6.0/System.CodeDom.dll",
+        "lib/net6.0/System.CodeDom.xml",
+        "lib/net7.0/System.CodeDom.dll",
+        "lib/net7.0/System.CodeDom.xml",
+        "lib/net8.0/System.CodeDom.dll",
+        "lib/net8.0/System.CodeDom.xml",
+        "lib/netstandard2.0/System.CodeDom.dll",
+        "lib/netstandard2.0/System.CodeDom.xml",
+        "system.codedom.8.0.0.nupkg.sha512",
+        "system.codedom.nuspec",
+        "useSharedDesignerContext.txt"
+      ]
+    },
     "System.Diagnostics.EventLog/8.0.1": {
       "sha512": "n1ZP7NM2Gkn/MgD8+eOT5MulMj6wfeQMNS2Pizvq5GHCZfjlFMXV2irQlQmJhwA2VABC57M0auudO89Iu2uRLg==",
       "type": "package",
@@ -3889,6 +3946,39 @@
         "runtimes/win/lib/net8.0/System.Diagnostics.EventLog.xml",
         "system.diagnostics.eventlog.8.0.1.nupkg.sha512",
         "system.diagnostics.eventlog.nuspec",
+        "useSharedDesignerContext.txt"
+      ]
+    },
+    "System.Management/8.0.0": {
+      "sha512": "jrK22i5LRzxZCfGb+tGmke2VH7oE0DvcDlJ1HAKYU8cPmD8XnpUT0bYn2Gy98GEhGjtfbR/sxKTVb+dE770pfA==",
+      "type": "package",
+      "path": "system.management/8.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "LICENSE.TXT",
+        "PACKAGE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "buildTransitive/net6.0/_._",
+        "buildTransitive/netcoreapp2.0/System.Management.targets",
+        "lib/net462/_._",
+        "lib/net6.0/System.Management.dll",
+        "lib/net6.0/System.Management.xml",
+        "lib/net7.0/System.Management.dll",
+        "lib/net7.0/System.Management.xml",
+        "lib/net8.0/System.Management.dll",
+        "lib/net8.0/System.Management.xml",
+        "lib/netstandard2.0/System.Management.dll",
+        "lib/netstandard2.0/System.Management.xml",
+        "runtimes/win/lib/net6.0/System.Management.dll",
+        "runtimes/win/lib/net6.0/System.Management.xml",
+        "runtimes/win/lib/net7.0/System.Management.dll",
+        "runtimes/win/lib/net7.0/System.Management.xml",
+        "runtimes/win/lib/net8.0/System.Management.dll",
+        "runtimes/win/lib/net8.0/System.Management.xml",
+        "system.management.8.0.0.nupkg.sha512",
+        "system.management.nuspec",
         "useSharedDesignerContext.txt"
       ]
     },
@@ -3933,9 +4023,9 @@
     "net8.0": [
       "Microsoft.Extensions.Hosting.Systemd >= 8.*",
       "Microsoft.Extensions.Hosting.WindowsServices >= 8.*",
-      "Microsoft.TSS >= 2.1.1",
       "Serilog.AspNetCore >= 8.*",
-      "Serilog.Sinks.EventLog >= 4.*"
+      "Serilog.Sinks.EventLog >= 4.*",
+      "System.Management >= 8.*"
     ]
   },
   "packageFolders": {
@@ -3989,10 +4079,6 @@
             "target": "Package",
             "version": "[8.*, )"
           },
-          "Microsoft.TSS": {
-            "target": "Package",
-            "version": "[2.1.1, )"
-          },
           "Serilog.AspNetCore": {
             "target": "Package",
             "version": "[8.*, )"
@@ -4000,6 +4086,10 @@
           "Serilog.Sinks.EventLog": {
             "target": "Package",
             "version": "[4.*, )"
+          },
+          "System.Management": {
+            "target": "Package",
+            "version": "[8.*, )"
           }
         },
         "imports": [

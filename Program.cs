@@ -1,64 +1,29 @@
 using System.Net;
-using System.Linq;
 using SecureDeviceBridge.API;
 using SecureDeviceBridge.Core.Configuration;
 using SecureDeviceBridge.Core.Interfaces;
 using SecureDeviceBridge.Infrastructure;
-using SecureDeviceBridge.Worker;
 using Serilog;
 using Serilog.Events;
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Secure Device Bridge — Composition Root
+// =============================================================================
+// Secure Device Bridge v2.0 - Composition Root
 //
-// Universal hardware bridge between local web applications and TPM 2.0.
-// Listens STRICTLY on http://127.0.0.1:{port} — never exposed to the network.
+// Universal hardware bridge that generates a unique, deterministic Device ID
+// by reading physical hardware component serial numbers (CPU, Motherboard,
+// BIOS, SMBIOS UUID, Machine GUID).
 //
-// Device Authentication Philosophy:
-//   This system does NOT require or generate a separate DeviceId.
-//   Device authentication and registration rely ENTIRELY on the TPM-resident
-//   asymmetric public key. Cryptographic proof-of-possession of the hardware-bound
-//   private key is the sole source of trust.
+// Listens STRICTLY on http://127.0.0.1:{port} - never exposed to the network.
 //
 // Architecture: Logical Clean Architecture in a single deployable.
-//   Core/           → Interfaces, DTOs, Configuration
-//   Infrastructure/ → TPM implementation (Microsoft.TSS / Tpm2Lib)
-//   API/            → Minimal API endpoints with CORS
-//   Worker/         → Background health monitor
-// ═══════════════════════════════════════════════════════════════════════════════
+//   Core/           - Interfaces, DTOs, Configuration
+//   Infrastructure/ - Hardware fingerprint implementation (WMI / CIM)
+//   API/            - Minimal API endpoints with CORS
+// =============================================================================
 
-// ── CLI Command Handler (Uninstall/Eviction Support) ──────────────────────────
-if (args.Contains("--remove-tpm-key"))
-{
-    var tempBuilder = WebApplication.CreateBuilder(args);
-    var tpmOptions = new TpmOptions();
-    tempBuilder.Configuration.GetSection("Tpm").Bind(tpmOptions);
-    
-    using var loggerFactory = LoggerFactory.Create(logBuilder =>
-    {
-        logBuilder.AddConsole();
-    });
-    var logger = loggerFactory.CreateLogger<TpmService>();
-    var options = Microsoft.Extensions.Options.Options.Create(tpmOptions);
-
-    using var tpmService = new TpmService(logger, options);
-    Console.WriteLine("[*] Evicting signing key from TPM persistent handle...");
-    bool success = await tpmService.RemoveKeyAsync(CancellationToken.None);
-    if (success)
-    {
-        Console.WriteLine("[+] SUCCESS: TPM-resident key was successfully evicted.");
-        Environment.Exit(0);
-    }
-    else
-    {
-        Console.WriteLine("[-] FAILED: Key could not be removed (it may not exist, or TPM is unreachable).");
-        Environment.Exit(1);
-    }
-}
-
-// ── Configure Logger (Serilog) ───────────────────────────────────────────────
+// -- Configure Logger (Serilog) -----------------------------------------------
 string logDirectory = Path.Combine(
-    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), // %ProgramData% on Windows
+    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
     "SecureDeviceBridge",
     "logs");
 
@@ -71,7 +36,6 @@ try
 }
 catch
 {
-    // Fallback to local logs directory if ProgramData is not writable
     logDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
 }
 
@@ -102,31 +66,25 @@ var builder = WebApplication.CreateBuilder(args);
 // Replace default logger with Serilog
 builder.Host.UseSerilog();
 
-// ── Host Configuration ────────────────────────────────────────────────────────
-// Windows Service hosting (no-op on Linux). Enables install via sc.exe or New-Service.
+// -- Host Configuration -------------------------------------------------------
 builder.Host.UseWindowsService(options =>
 {
     options.ServiceName = "SecureDeviceBridge";
 });
 
-// Systemd integration for Linux daemon hosting (no-op on Windows).
 builder.Host.UseSystemd();
 
-// ── Kestrel: Enforce localhost-only binding (Security by Isolation) ────────────
-// The IP address 127.0.0.1 is hardcoded for security — only the port is configurable.
-// This ensures the service is NEVER accidentally exposed to the network, regardless
-// of appsettings.json misconfiguration.
+// -- Kestrel: Enforce localhost-only binding -----------------------------------
 int servicePort = builder.Configuration.GetValue("Service:Port", 5050);
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.Listen(IPAddress.Loopback, servicePort);
 });
 
-// ── Configuration Binding ─────────────────────────────────────────────────────
-builder.Services.Configure<TpmOptions>(builder.Configuration.GetSection("Tpm"));
+// -- Configuration Binding ----------------------------------------------------
 builder.Services.Configure<CorsSettings>(builder.Configuration.GetSection("Cors"));
 
-// ── CORS Policy: Dynamic Origins from appsettings.json ────────────────────────
+// -- CORS Policy: Dynamic Origins from appsettings.json -----------------------
 var corsSettings = builder.Configuration
     .GetSection("Cors")
     .Get<CorsSettings>() ?? new CorsSettings();
@@ -144,8 +102,6 @@ builder.Services.AddCors(options =>
         }
         else
         {
-            // If no origins are configured, deny all cross-origin requests.
-            // Direct localhost requests (same-origin) are never blocked by CORS.
             policy.WithOrigins("https://no-origin-configured.invalid")
                   .AllowAnyHeader()
                   .AllowAnyMethod();
@@ -153,38 +109,38 @@ builder.Services.AddCors(options =>
     });
 });
 
-// ── Dependency Injection ──────────────────────────────────────────────────────
-// Singleton: TPM is a hardware device — one connection for the entire service lifetime.
-// Thread safety is handled internally via SemaphoreSlim.
-builder.Services.AddSingleton<ITpmService, TpmService>();
+// -- Dependency Injection -----------------------------------------------------
+// Singleton: hardware identifiers are constant for the lifetime of the machine.
+builder.Services.AddSingleton<IHardwareFingerprintService, HardwareFingerprintService>();
 
-// Background health monitor for operational visibility.
-builder.Services.AddHostedService<TpmHealthMonitor>();
-
-// ── Build Application ─────────────────────────────────────────────────────────
+// -- Build Application --------------------------------------------------------
 var app = builder.Build();
 
-// ── Middleware Pipeline ───────────────────────────────────────────────────────
+// -- Middleware Pipeline ------------------------------------------------------
 app.UseCors("AllowConfiguredOrigins");
 
-// ── Map Endpoints ─────────────────────────────────────────────────────────────
+// -- Map Endpoints ------------------------------------------------------------
 app.MapSecureDeviceBridgeEndpoints();
 
-// ── Startup Banner ────────────────────────────────────────────────────────────
-Log.Information("Source of Trust: Device Identity is based solely on the hardware TPM Public Key.");
-Log.Information("═══════════════════════════════════════════════════════════");
-Log.Information("  Secure Device Bridge v1.0.0");
+// -- Eagerly collect the fingerprint on startup for health endpoint ------------
+var fingerprintService = app.Services.GetRequiredService<IHardwareFingerprintService>();
+_ = await fingerprintService.CollectFingerprintAsync(CancellationToken.None);
+
+// -- Startup Banner -----------------------------------------------------------
+Log.Information("===========================================================");
+Log.Information("  Secure Device Bridge v2.0.0 (Hardware Fingerprint Mode)");
 Log.Information("  Listening on: http://127.0.0.1:{Port}", servicePort);
-Log.Information("  Security Mode: TPM_Asymmetric_PoP (RSA-2048 / SHA-256)");
+Log.Information("  Mode: HardwareFingerprint (CPU + MB + BIOS + UUID + GUID)");
+Log.Information("  Hardware Components Available: {Count}", fingerprintService.GetAvailableComponentCount());
 Log.Information("  CORS Origins: {Origins}",
     corsSettings.AllowedOrigins.Count > 0
         ? string.Join(", ", corsSettings.AllowedOrigins)
         : "(none configured)");
 Log.Information("  Platform: {Platform}", Environment.OSVersion);
 Log.Information("  Logs Directory: {LogDir}", logDirectory);
-Log.Information("═══════════════════════════════════════════════════════════");
+Log.Information("===========================================================");
 
-// ── Run ───────────────────────────────────────────────────────────────────────
+// -- Run ----------------------------------------------------------------------
 try
 {
     app.Run();
