@@ -1,15 +1,24 @@
 using System.Net;
+using System.Linq;
 using SecureDeviceBridge.API;
 using SecureDeviceBridge.Core.Configuration;
 using SecureDeviceBridge.Core.Interfaces;
 using SecureDeviceBridge.Infrastructure;
 using SecureDeviceBridge.Worker;
+using Serilog;
+using Serilog.Events;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Secure Device Bridge — Composition Root
 //
 // Universal hardware bridge between local web applications and TPM 2.0.
 // Listens STRICTLY on http://127.0.0.1:{port} — never exposed to the network.
+//
+// Device Authentication Philosophy:
+//   This system does NOT require or generate a separate DeviceId.
+//   Device authentication and registration rely ENTIRELY on the TPM-resident
+//   asymmetric public key. Cryptographic proof-of-possession of the hardware-bound
+//   private key is the sole source of trust.
 //
 // Architecture: Logical Clean Architecture in a single deployable.
 //   Core/           → Interfaces, DTOs, Configuration
@@ -18,7 +27,80 @@ using SecureDeviceBridge.Worker;
 //   Worker/         → Background health monitor
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// ── CLI Command Handler (Uninstall/Eviction Support) ──────────────────────────
+if (args.Contains("--remove-tpm-key"))
+{
+    var tempBuilder = WebApplication.CreateBuilder(args);
+    var tpmOptions = new TpmOptions();
+    tempBuilder.Configuration.GetSection("Tpm").Bind(tpmOptions);
+    
+    using var loggerFactory = LoggerFactory.Create(logBuilder =>
+    {
+        logBuilder.AddConsole();
+    });
+    var logger = loggerFactory.CreateLogger<TpmService>();
+    var options = Microsoft.Extensions.Options.Options.Create(tpmOptions);
+
+    using var tpmService = new TpmService(logger, options);
+    Console.WriteLine("[*] Evicting signing key from TPM persistent handle...");
+    bool success = await tpmService.RemoveKeyAsync(CancellationToken.None);
+    if (success)
+    {
+        Console.WriteLine("[+] SUCCESS: TPM-resident key was successfully evicted.");
+        Environment.Exit(0);
+    }
+    else
+    {
+        Console.WriteLine("[-] FAILED: Key could not be removed (it may not exist, or TPM is unreachable).");
+        Environment.Exit(1);
+    }
+}
+
+// ── Configure Logger (Serilog) ───────────────────────────────────────────────
+string logDirectory = Path.Combine(
+    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), // %ProgramData% on Windows
+    "SecureDeviceBridge",
+    "logs");
+
+try
+{
+    if (!Directory.Exists(logDirectory))
+    {
+        Directory.CreateDirectory(logDirectory);
+    }
+}
+catch
+{
+    // Fallback to local logs directory if ProgramData is not writable
+    logDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
+}
+
+string logPath = Path.Combine(logDirectory, "secure-device-bridge-.log");
+
+var logConfig = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .WriteTo.File(
+        logPath,
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 14,
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}");
+
+if (OperatingSystem.IsWindows())
+{
+    logConfig.WriteTo.EventLog(
+        source: "SecureDeviceBridge",
+        manageEventSource: true);
+}
+
+Log.Logger = logConfig.CreateLogger();
+
 var builder = WebApplication.CreateBuilder(args);
+
+// Replace default logger with Serilog
+builder.Host.UseSerilog();
 
 // ── Host Configuration ────────────────────────────────────────────────────────
 // Windows Service hosting (no-op on Linux). Enables install via sc.exe or New-Service.
@@ -89,17 +171,29 @@ app.UseCors("AllowConfiguredOrigins");
 app.MapSecureDeviceBridgeEndpoints();
 
 // ── Startup Banner ────────────────────────────────────────────────────────────
-var logger = app.Services.GetRequiredService<ILogger<Program>>();
-logger.LogInformation("═══════════════════════════════════════════════════════════");
-logger.LogInformation("  Secure Device Bridge v1.0.0");
-logger.LogInformation("  Listening on: http://127.0.0.1:{Port}", servicePort);
-logger.LogInformation("  Security Mode: TPM_Asymmetric_PoP (RSA-2048 / SHA-256)");
-logger.LogInformation("  CORS Origins: {Origins}",
+Log.Information("Source of Trust: Device Identity is based solely on the hardware TPM Public Key.");
+Log.Information("═══════════════════════════════════════════════════════════");
+Log.Information("  Secure Device Bridge v1.0.0");
+Log.Information("  Listening on: http://127.0.0.1:{Port}", servicePort);
+Log.Information("  Security Mode: TPM_Asymmetric_PoP (RSA-2048 / SHA-256)");
+Log.Information("  CORS Origins: {Origins}",
     corsSettings.AllowedOrigins.Count > 0
         ? string.Join(", ", corsSettings.AllowedOrigins)
         : "(none configured)");
-logger.LogInformation("  Platform: {Platform}", Environment.OSVersion);
-logger.LogInformation("═══════════════════════════════════════════════════════════");
+Log.Information("  Platform: {Platform}", Environment.OSVersion);
+Log.Information("  Logs Directory: {LogDir}", logDirectory);
+Log.Information("═══════════════════════════════════════════════════════════");
 
 // ── Run ───────────────────────────────────────────────────────────────────────
-app.Run();
+try
+{
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Host terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

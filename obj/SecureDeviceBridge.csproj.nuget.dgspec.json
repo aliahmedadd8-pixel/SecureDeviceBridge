@@ -55,6 +55,14 @@
             "Microsoft.TSS": {
               "target": "Package",
               "version": "[2.1.1, )"
+            },
+            "Serilog.AspNetCore": {
+              "target": "Package",
+              "version": "[8.*, )"
+            },
+            "Serilog.Sinks.EventLog": {
+              "target": "Package",
+              "version": "[4.*, )"
             }
           },
           "imports": [

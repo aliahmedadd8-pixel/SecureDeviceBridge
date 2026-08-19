@@ -37,4 +37,13 @@ public interface ITpmService : IDisposable
     /// This method is non-blocking and does not acquire the TPM lock.
     /// </summary>
     TpmServiceStatus GetStatus();
+
+    /// <summary>
+    /// Permanently removes the signing key from the TPM persistent handle.
+    /// Used during uninstall when the user opts to delete the device identity.
+    /// WARNING: This operation is irreversible — the private key is destroyed.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>True if the key was successfully removed, false otherwise.</returns>
+    Task<bool> RemoveKeyAsync(CancellationToken cancellationToken);
 }

@@ -24,6 +24,9 @@
 .PARAMETER Runtime
     Target runtime identifier. Default: win-x64.
 
+.PARAMETER RemoveTpmKey
+    If true, evicts the TPM-bound key during uninstall without prompting.
+
 .EXAMPLE
     .\Install-Service.ps1 -Action Install
     .\Install-Service.ps1 -Action Uninstall
@@ -38,10 +41,12 @@ param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
 
-    [string]$Runtime = 'win-x64'
+    [string]$Runtime = 'win-x64',
+
+    [switch]$RemoveTpmKey
 )
 
-# ── Constants ──────────────────────────────────────────────────────────────────
+# --- Constants ------------------------------------------------------------------
 $ServiceName    = 'SecureDeviceBridge'
 $DisplayName    = 'Secure Device Bridge'
 $Description    = 'Universal hardware bridge for TPM 2.0 cryptographic operations via local Minimal APIs.'
@@ -49,13 +54,13 @@ $ProjectDir     = $PSScriptRoot
 $PublishDir     = Join-Path $ProjectDir "bin\$Configuration\net8.0\$Runtime\publish"
 $ExePath        = Join-Path $PublishDir 'SecureDeviceBridge.exe'
 
-# ── Helper Functions ───────────────────────────────────────────────────────────
+# --- Helper Functions -----------------------------------------------------------
 
 function Write-Banner {
     Write-Host ''
-    Write-Host '═══════════════════════════════════════════════════════════' -ForegroundColor Cyan
-    Write-Host '  Secure Device Bridge — Service Installer v1.0.0'         -ForegroundColor Cyan
-    Write-Host '═══════════════════════════════════════════════════════════' -ForegroundColor Cyan
+    Write-Host '===========================================================' -ForegroundColor Cyan
+    Write-Host '  Secure Device Bridge - Service Installer v1.0.0'         -ForegroundColor Cyan
+    Write-Host '===========================================================' -ForegroundColor Cyan
     Write-Host ''
 }
 
@@ -100,7 +105,7 @@ function Install-SecureDeviceBridge {
 
     Write-Host "[*] Creating Windows Service..." -ForegroundColor Yellow
 
-    # Create the service with delayed auto-start
+    # Create the service with delayed auto-start (defaults to LocalSystem)
     New-Service `
         -Name $ServiceName `
         -BinaryPathName "`"$ExePath`"" `
@@ -113,13 +118,13 @@ function Install-SecureDeviceBridge {
 
     # Configure recovery options: restart on 1st, 2nd, and subsequent failures
     # Reset failure count after 86400 seconds (24 hours)
-    Write-Host "[*] Configuring recovery options (restart on failure)..." -ForegroundColor Yellow
-    & sc.exe failure $ServiceName reset= 86400 actions= restart/5000/restart/10000/restart/30000 | Out-Null
+    Write-Host "[*] Configuring recovery options (restart on failure: 5s / 15s / 60s)..." -ForegroundColor Yellow
+    & sc.exe failure $ServiceName reset= 86400 actions= restart/5000/restart/15000/restart/60000 | Out-Null
 
     if ($LASTEXITCODE -ne 0) {
         Write-Warning "Failed to set recovery options (non-critical). sc.exe exit code: $LASTEXITCODE"
     } else {
-        Write-Host "[+] Recovery options configured: restart after 5s / 10s / 30s" -ForegroundColor Green
+        Write-Host "[+] Recovery options configured: restart after 5s / 15s / 60s" -ForegroundColor Green
     }
 
     # Configure delayed auto-start
@@ -141,6 +146,24 @@ function Uninstall-SecureDeviceBridge {
     if (-not $existingService) {
         Write-Host "[!] Service '$ServiceName' is not installed." -ForegroundColor Yellow
         return
+    }
+
+    # Evict TPM key if requested or confirmed by user
+    $evict = $RemoveTpmKey
+    if (-not $evict -and [Environment]::UserInteractive) {
+        $response = Read-Host "Do you want to permanently delete the TPM-resident private key (Device Identity) from this hardware? (y/N)"
+        if ($response -match '^[yY](es)?$') {
+            $evict = $true
+        }
+    }
+
+    if ($evict) {
+        Write-Host "[*] Evicting TPM key..." -ForegroundColor Yellow
+        if (Test-Path $ExePath) {
+            & $ExePath --remove-tpm-key
+        } else {
+            Write-Warning "Could not find $ExePath to execute key eviction. TPM key remains intact."
+        }
     }
 
     # Stop the service if running
@@ -199,7 +222,7 @@ function Get-SecureDeviceBridgeStatus {
     }
 }
 
-# ── Main ───────────────────────────────────────────────────────────────────────
+# --- Main -----------------------------------------------------------------------
 
 Write-Banner
 

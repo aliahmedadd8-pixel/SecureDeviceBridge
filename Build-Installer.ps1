@@ -10,7 +10,7 @@
     3. Outputs: Installer\Output\SecureDeviceBridge_Setup_1.0.0.exe
 
     The resulting installer can be distributed to end users who can install
-    the service with a few clicks — no .NET SDK or technical knowledge required.
+    the service with a few clicks - no .NET SDK or technical knowledge required.
 
 .PARAMETER Configuration
     Build configuration. Default: Release.
@@ -30,7 +30,7 @@
 .NOTES
     Prerequisites:
     - .NET 8 SDK (for building)
-    - Inno Setup 6.x (for packaging) — https://jrsoftware.org/isdl.php
+    - Inno Setup 6.x (for packaging) - https://jrsoftware.org/isdl.php
 #>
 
 [CmdletBinding()]
@@ -43,7 +43,7 @@ param(
     [switch]$SkipBuild
 )
 
-# ── Constants ──────────────────────────────────────────────────────────────────
+# --- Constants ------------------------------------------------------------------
 $ErrorActionPreference = 'Stop'
 $ProjectDir  = $PSScriptRoot
 $ProjectFile = Join-Path $ProjectDir 'SecureDeviceBridge.csproj'
@@ -53,14 +53,14 @@ $IssFile     = Join-Path $InstallerDir 'SecureDeviceBridge.iss'
 $OutputDir   = Join-Path $InstallerDir 'Output'
 $Runtime     = 'win-x64'
 
-# ── Banner ─────────────────────────────────────────────────────────────────────
+# --- Banner ---------------------------------------------------------------------
 Write-Host ''
-Write-Host '═══════════════════════════════════════════════════════════' -ForegroundColor Cyan
-Write-Host '  Secure Device Bridge — Installer Builder v1.0.0'         -ForegroundColor Cyan
-Write-Host '═══════════════════════════════════════════════════════════' -ForegroundColor Cyan
+Write-Host '===========================================================' -ForegroundColor Cyan
+Write-Host '  Secure Device Bridge - Installer Builder v1.0.0'         -ForegroundColor Cyan
+Write-Host '===========================================================' -ForegroundColor Cyan
 Write-Host ''
 
-# ── Step 1: Locate Inno Setup Compiler ─────────────────────────────────────────
+# --- Step 1: Locate Inno Setup Compiler -----------------------------------------
 Write-Host '[1/3] Locating Inno Setup compiler...' -ForegroundColor Yellow
 
 $IsccPaths = @(
@@ -111,7 +111,7 @@ if (-not $IsccExe) {
 
 Write-Host "      Found: $IsccExe" -ForegroundColor Green
 
-# ── Step 2: Publish .NET Project ───────────────────────────────────────────────
+# --- Step 2: Publish .NET Project ----------------------------------------------
 if ($SkipBuild) {
     Write-Host '[2/3] Skipping build (using existing publish output)...' -ForegroundColor Yellow
 
@@ -158,7 +158,7 @@ if ($SkipBuild) {
     Write-Host "      Published: $totalFiles files, EXE size: $([math]::Round($exeSize, 1)) MB" -ForegroundColor Green
 }
 
-# ── Step 3: Compile Inno Setup Installer ───────────────────────────────────────
+# --- Step 3: Compile Inno Setup Installer --------------------------------------
 Write-Host '[3/3] Compiling installer...' -ForegroundColor Yellow
 
 # Ensure output directory exists
@@ -175,23 +175,23 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# ── Done ───────────────────────────────────────────────────────────────────────
+# --- Done -----------------------------------------------------------------------
 $installerFiles = Get-ChildItem $OutputDir -Filter '*.exe' | Sort-Object LastWriteTime -Descending
 if ($installerFiles.Count -gt 0) {
     $installer = $installerFiles[0]
     $installerSize = $installer.Length / 1MB
 
     Write-Host ''
-    Write-Host '═══════════════════════════════════════════════════════════' -ForegroundColor Green
+    Write-Host '===========================================================' -ForegroundColor Green
     Write-Host '  Installer built successfully!'                            -ForegroundColor Green
-    Write-Host '═══════════════════════════════════════════════════════════' -ForegroundColor Green
+    Write-Host '===========================================================' -ForegroundColor Green
     Write-Host ''
     Write-Host "  File: $($installer.FullName)" -ForegroundColor White
     Write-Host "  Size: $([math]::Round($installerSize, 1)) MB" -ForegroundColor White
     Write-Host ''
     Write-Host '  Distribution:' -ForegroundColor Gray
     Write-Host '    Send this single EXE to end users.' -ForegroundColor Gray
-    Write-Host '    They right-click → Run as Administrator → Next → Install.' -ForegroundColor Gray
+    Write-Host '    They right-click -> Run as Administrator -> Next -> Install.' -ForegroundColor Gray
     Write-Host ''
 
     # Open the output folder in Explorer

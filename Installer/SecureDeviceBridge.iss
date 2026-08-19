@@ -136,8 +136,8 @@ begin
     ExePath := ExpandConstant('{app}\{#MyServiceExe}');
     Log('Installing Windows Service...');
 
-    // 1. Create the service with delayed auto-start
-    if not RunSC(Format('create %s binPath= "\"%s\"" start= delayed-auto DisplayName= "%s"',
+    // 1. Create the service with delayed auto-start, running under the LocalSystem account explicitly
+    if not RunSC(Format('create %s binPath= "\"%s\"" start= delayed-auto DisplayName= "%s" obj= LocalSystem',
                         [SERVICE_NAME, ExePath, '{#MyAppName}'])) then
     begin
       Log('WARNING: Failed to create service via sc.exe');
@@ -152,8 +152,8 @@ begin
                  [SERVICE_NAME,
                   'Universal hardware bridge for TPM 2.0 cryptographic operations via local Minimal APIs.']));
 
-    // 3. Configure recovery: restart after 5s / 10s / 30s, reset counter after 24h
-    RunSC(Format('failure %s reset= 86400 actions= restart/5000/restart/10000/restart/30000',
+    // 3. Configure recovery: restart after 5s / 15s / 60s, reset counter after 24h
+    RunSC(Format('failure %s reset= 86400 actions= restart/5000/restart/15000/restart/60000',
                  [SERVICE_NAME]));
 
     // 4. Start the service
@@ -184,6 +184,42 @@ begin
       Log('WARNING: Failed to remove service. It may need manual removal.');
 
     Sleep(1000);
+  end;
+end;
+
+// ── InitializeUninstall: Prompt user about TPM key removal ──────────────────
+function InitializeUninstall(): Boolean;
+var
+  Response: Integer;
+  ResultCode: Integer;
+  ExePath: String;
+begin
+  Result := True;
+
+  // Since device identity/auth relies entirely on the TPM public key,
+  // evicting the persistent handle is irreversible and will break registration.
+  Response := MsgBox('Do you want to permanently delete the TPM-bound private key (Device Identity) from this hardware?' + #13#10#13#10 +
+                     'Warning: This will permanently invalidate this device''s registration and is IRREVERSIBLE.',
+                     mbConfirmation, MB_YESNO or MB_DEFBUTTON2);
+
+  if Response = idYes then
+  begin
+    ExePath := ExpandConstant('{app}\{#MyServiceExe}');
+    if FileExists(ExePath) then
+    begin
+      Log('Evicting TPM persistent key via CLI...');
+      if Exec(ExePath, '--remove-tpm-key', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+      begin
+        if ResultCode = 0 then
+          Log('TPM key successfully evicted.')
+        else
+          Log('TPM key eviction CLI returned error code: ' + IntToStr(ResultCode));
+      end
+      else
+        Log('Failed to run TPM key eviction CLI.');
+    end
+    else
+      Log('Service executable not found. Cannot evict key.');
   end;
 end;
 

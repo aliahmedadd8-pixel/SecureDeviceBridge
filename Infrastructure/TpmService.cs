@@ -442,6 +442,62 @@ public sealed class TpmService : ITpmService
 
     #endregion
 
+    #region TPM Key Removal (Uninstall Support)
+
+    /// <inheritdoc />
+    public async Task<bool> RemoveKeyAsync(CancellationToken cancellationToken)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        await _tpmLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (!_tpmAvailable || _tpm is null)
+            {
+                _logger.LogWarning("Cannot remove TPM key — TPM device is not available");
+                return false;
+            }
+
+            uint handleValue = _options.GetPersistentHandleValue();
+            var persistentHandle = new TpmHandle(handleValue);
+
+            if (!CheckPersistentKeyExists())
+            {
+                _logger.LogWarning(
+                    "No signing key found at persistent handle 0x{Handle:X8}. Nothing to remove.",
+                    handleValue);
+                return false;
+            }
+
+            // Evict the key from the persistent handle — this is IRREVERSIBLE.
+            // The private key material is destroyed inside the TPM chip.
+            _tpm.EvictControl(TpmRh.Owner, persistentHandle, persistentHandle);
+
+            _keyLoaded = false;
+            _lastError = null;
+
+            _logger.LogInformation(
+                "TPM signing key PERMANENTLY REMOVED from persistent handle 0x{Handle:X8}. " +
+                "The device identity private key has been destroyed.",
+                handleValue);
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            string errorMessage = $"Failed to remove TPM key: {ex.Message}";
+            _lastError = errorMessage;
+            _logger.LogError(ex, "TPM key removal failed");
+            return false;
+        }
+        finally
+        {
+            _tpmLock.Release();
+        }
+    }
+
+    #endregion
+
     #region IDisposable
 
     public void Dispose()

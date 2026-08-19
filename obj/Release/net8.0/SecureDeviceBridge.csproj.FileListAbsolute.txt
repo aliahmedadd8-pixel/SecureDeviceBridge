@@ -56,3 +56,15 @@ C:\Users\Dev57.THARWAT\.gemini\antigravity\scratch\SecureDeviceBridge\obj\Releas
 C:\Users\Dev57.THARWAT\.gemini\antigravity\scratch\SecureDeviceBridge\obj\Release\net8.0\SecureDeviceBridge.pdb
 C:\Users\Dev57.THARWAT\.gemini\antigravity\scratch\SecureDeviceBridge\obj\Release\net8.0\SecureDeviceBridge.genruntimeconfig.cache
 C:\Users\Dev57.THARWAT\.gemini\antigravity\scratch\SecureDeviceBridge\obj\Release\net8.0\ref\SecureDeviceBridge.dll
+C:\Users\Dev57.THARWAT\.gemini\antigravity\scratch\SecureDeviceBridge\bin\Release\net8.0\Microsoft.Extensions.DependencyModel.dll
+C:\Users\Dev57.THARWAT\.gemini\antigravity\scratch\SecureDeviceBridge\bin\Release\net8.0\Serilog.dll
+C:\Users\Dev57.THARWAT\.gemini\antigravity\scratch\SecureDeviceBridge\bin\Release\net8.0\Serilog.AspNetCore.dll
+C:\Users\Dev57.THARWAT\.gemini\antigravity\scratch\SecureDeviceBridge\bin\Release\net8.0\Serilog.Extensions.Hosting.dll
+C:\Users\Dev57.THARWAT\.gemini\antigravity\scratch\SecureDeviceBridge\bin\Release\net8.0\Serilog.Extensions.Logging.dll
+C:\Users\Dev57.THARWAT\.gemini\antigravity\scratch\SecureDeviceBridge\bin\Release\net8.0\Serilog.Formatting.Compact.dll
+C:\Users\Dev57.THARWAT\.gemini\antigravity\scratch\SecureDeviceBridge\bin\Release\net8.0\Serilog.Settings.Configuration.dll
+C:\Users\Dev57.THARWAT\.gemini\antigravity\scratch\SecureDeviceBridge\bin\Release\net8.0\Serilog.Sinks.Console.dll
+C:\Users\Dev57.THARWAT\.gemini\antigravity\scratch\SecureDeviceBridge\bin\Release\net8.0\Serilog.Sinks.Debug.dll
+C:\Users\Dev57.THARWAT\.gemini\antigravity\scratch\SecureDeviceBridge\bin\Release\net8.0\Serilog.Sinks.EventLog.dll
+C:\Users\Dev57.THARWAT\.gemini\antigravity\scratch\SecureDeviceBridge\bin\Release\net8.0\Serilog.Sinks.File.dll
+C:\Users\Dev57.THARWAT\.gemini\antigravity\scratch\SecureDeviceBridge\obj\Release\net8.0\SecureDeviceBridge.sourcelink.json
